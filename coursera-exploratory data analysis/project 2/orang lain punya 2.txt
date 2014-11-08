@@ -1,0 +1,135 @@
+## plot 1
+NEI <- readRDS("summarySCC_PM25.rds")
+SCC <- readRDS("Source_Classification_Code.rds")
+
+#Total emissions from PM in USA 1999 - 2008
+USATotal <- tapply(NEI$Emissions, NEI$year, sum)
+
+png("plot1.png")
+plot(names(USATotal), USATotal, type="l",
+     xlab="Year", ylab=expression("Total" ~ PM[2.5] ~ "Emissions (tons)"),
+     main=expression("Total US" ~ PM[2.5] ~ "Emissions by Year"))
+dev.off()
+
+## plot 2
+NEI <- readRDS("summarySCC_PM25.rds")
+SCC <- readRDS("Source_Classification_Code.rds")
+
+#Total emissions from PM in Baltimore City 1999 - 2008
+
+BaltimoreCity <- subset(NEI, fips == "24510")
+BaltTotal <- tapply(BaltimoreCity$Emissions, BaltimoreCity$year, sum)
+
+png("plot2.png")
+plot(names(BaltTotal), BaltTotal, type="l",
+     xlab="Year", ylab=expression("Total" ~ PM[2.5] ~ "Emissions (tons)"),
+     main=expression("Total Baltimore City" ~ PM[2.5] ~ "Emissions by Year"))
+dev.off()
+
+## plot 3
+NEI <- readRDS("summarySCC_PM25.rds")
+SCC <- readRDS("Source_Classification_Code.rds")
+
+#Total emissions from PM in Baltimore City 1999 - 2008
+
+BaltimoreCity <- subset(NEI, fips == "24510")
+BaltTotal <- tapply(BaltimoreCity$Emissions, BaltimoreCity$year, sum)
+
+## Load library(plyr) & ggplot2
+library(plyr)
+library(ggplot2)
+
+
+TypeTotal <- ddply(BaltimoreCity, .(year, type), function(x) sum(x$Emissions))
+colnames(TypeTotal)[3] <- "Emissions"
+
+png("plot3.png")
+qplot(year, Emissions, data=TypeTotal, color=type, geom="path") +
+    ggtitle(expression("Baltimore City" ~ PM[2.5] ~ "Emissions: Type & Year")) +
+    xlab("Year") +
+    ylab(expression("Total" ~ PM[2.5] ~ "Emissions"))
+dev.off()
+
+## plot 4
+NEI <- readRDS("summarySCC_PM25.rds")
+SCC <- readRDS("Source_Classification_Code.rds")
+
+
+## Load library(plyr) & ggplot2
+library(plyr)
+library(ggplot2)
+
+## Check data 
+head(SCC)
+levels(SCC$EI.Sector)
+## Looks like we can use EI.Sector column 
+Coal1 <- subset(SCC, EI.Sector %in% c("Fuel Comb - Comm/Institutional - Coal",
+                                                  "Fuel Comb - Electric Generation - Coal",
+                                                  "Fuel Comb - Industrial Boilers, ICEs - Coal"))
+
+
+Coal2 <- subset(SCC, grepl("Comb", Short.Name) & grepl("Coal", Short.Name))
+
+CoalCodes <- union(Coal2$SCC, Coal2$SCC)
+
+CoalComb<- subset(NEI, SCC %in% CoalCodes)
+
+TotalCoalComb <- ddply(CoalComb, .(year, type), function(x) sum(x$Emissions))
+colnames(TotalCoalComb)[3] <- "Emissions"
+
+
+png("plot4.png")
+qplot(year, Emissions, data=TotalCoalComb, color=type, geom="path") +
+    stat_summary(fun.y = "sum", fun.ymin = "sum", fun.ymax = "sum", 
+                 color = "blue", aes(shape="total"), geom="path") +
+    geom_line(aes(size="total", shape = NA)) +
+    ggtitle(expression("Coal Combustion" ~ PM[2.5] ~ "Emissions: Source Type & Year")) +
+    xlab("Year") +
+    ylab(expression("Total" ~ PM[2.5] ~ "Emissions"))
+dev.off()
+
+## plot 5
+NEI <- readRDS("summarySCC_PM25.rds")
+SCC <- readRDS("Source_Classification_Code.rds")
+
+
+## Load library(plyr) & ggplot2
+library(plyr)
+library(ggplot2)
+
+BaltMV <- subset(NEI, fips == "24510" & type=="ON-ROAD")
+
+TotalBaltMV <- ddply(BaltMV, .(year), function(x) sum(x$Emissions))
+colnames(TotalBaltMV)[2] <- "Emissions"
+
+png("plot5.png")
+qplot(year, Emissions, data=TotalBaltMV, geom="path") +
+    ggtitle(expression("Baltimore City" ~ PM[2.5] ~ "Yearly emissions (Motor Vehicle")) +
+    xlab("Year") +
+    ylab(expression("Total" ~ PM[2.5] ~ "Emissions"))
+dev.off()
+
+## plot 6
+##Load data
+NEI <- readRDS("summarySCC_PM25.rds")
+SCC <- readRDS("Source_Classification_Code.rds")
+
+
+## Load library(plyr) & ggplot2
+library(plyr)
+library(ggplot2)
+library(grid)
+
+MV <- unique(grep("Vehicles", SCC$EI.Sector, ignore.case = TRUE, value = TRUE))
+MV2 <- SCC[SCC$EI.Sector %in% MV, ]["SCC"]
+##Emissions BALT & LA
+EmBA <- NEI[NEI$SCC %in% MV2$SCC & NEI$fips == "24510",]
+EmLA <- NEI[NEI$SCC %in% MV2$SCC & NEI$fips == "06037",]
+EmBL <- rbind(EmBA, EmLA)
+MVY <- aggregate (Emissions ~ fips * year, data = EmBL,FUN = sum ) 
+MVY$county <- ifelse(MVY$fips == "06037", "Los Angeles", "Baltimore")
+
+## Construct a chart
+png("plot6.png", width=500)
+qplot(year, Emissions, data=MVY, geom="path", color=county) + ggtitle(expression("Motor Vehicle Emission" ~ PM[2.5] ~ "1999 - 2008 Los Angeles VS Baltimore")) + xlab("Year") + ylab(expression("Levels of" ~ PM[2.5] ~ " Emissions"))
+dev.off()
